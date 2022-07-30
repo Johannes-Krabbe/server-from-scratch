@@ -5,7 +5,7 @@ enum request_header { ACCEPT, ACCEPT_CHARSET, ACCEPT_ENCODING, ACCEPT_LANGUAGE, 
 
 typedef struct {
     size_t len;
-    char* str;
+    const char* str;
 } string;
 
 struct request {
@@ -15,4 +15,6 @@ struct request {
     string body;
 };
 
-struct request* parse_request(char* str, size_t len);
+struct request* parse_request(const char* str, size_t len);
+
+int parse_request_line(struct request* request, const char* str, size_t len);

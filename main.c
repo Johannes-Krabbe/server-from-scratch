@@ -21,7 +21,7 @@ int main() {
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(8080);
+    addr.sin_port = htons(8081);
     addr.sin_addr = in_addr;
 
     if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
@@ -46,9 +46,11 @@ int main() {
     size_t bufflen = 0;
     size_t maxlen = 10 * 1024 * 1024;
 
+    struct request* request = malloc(sizeof (struct request));
+
     char* message = "Hello\n";
 
-
+    char* beginning = buffer;
     while (1) {
         int req = accept(sock, (struct sockaddr*)&addr, &addrlen);
         if (req == -1) {
@@ -59,25 +61,52 @@ int main() {
         ssize_t res = 1;
         while (1) {
             res = read(req, buffer + bufflen, maxlen - bufflen);
-            bufflen += res;
+
+            for (int i = 0; i < res; i++) {
+                if (buffer[bufflen + i] == '\n') {
+                    size_t len = buffer + bufflen + i - beginning - 1;
+                    printf("LINE: %.*s\n", (int)len, beginning);
+
+                    if (len == 0) {
+                        goto loopend;
+                    }
+
+                    // analysis
+                    if (beginning == buffer) {
+                        parse_request_line(request, beginning, len);
+                    } else {
+                        // TODO parse header
+                    }
+
+                    beginning = buffer + bufflen + i + 1;
+                }
+            }
 
             if (res <= 0) {
                 if (res == 0) {
+                    // TODO
                     break;
                 } else {
                     perror("read");
                     return 1;
                 }
             }
+
+            bufflen += res;
+
             if (bufflen == maxlen) {
                 break;
             }
         }
 
-        printf("Received message: %s\n", buffer);
+        loopend:
+        printf("END OF HEADERS\n");
 
-        struct request* request = parse_request(buffer, bufflen);
-        printf("body: %s", request->body.str);
+        //printf("Received message: %s\n", buffer);
+
+        //struct request* request = parse_request(buffer, bufflen);
+        printf("METHOD: %i\n", request->method);
+        printf("URI: %.*s\n", (int) request->uri.len, request->uri.str);
 
         if (send(req, message, strlen(message), 0) == -1) {
             perror("send");
