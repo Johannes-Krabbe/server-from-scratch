@@ -85,6 +85,8 @@ int main() {
             perror("close");
             return 1;
         }
+
+        bufflen = 0;
     }
     return 0;
 }
