@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
+#include <malloc.h>
 
 int main() {
     printf("Hello, Jakob!\n");
@@ -37,8 +38,17 @@ int main() {
 
     socklen_t addrlen = sizeof(addr);
 
-    char buffer[1024] = {0};
+    char* buffer = malloc(10 * 1024 * 1024);
+    if (buffer == NULL) {
+        fprintf(stderr, "Unable to allocate buffer\n");
+        return 1;
+    }
+    size_t bufflen = 0;
+    size_t maxlen = 10 * 1024 * 1024;
+
     char* message = "Hello\n";
+
+
     while (1) {
         int req = accept(sock, (struct sockaddr*)&addr, &addrlen);
         if (req == -1) {
@@ -46,8 +56,22 @@ int main() {
             return 1;
         }
 
-        read(req, buffer, 1024);
-        printf("Received message: %s", buffer);
+        ssize_t res = 1;
+        while (1) {
+            res = read(req, buffer + bufflen, maxlen - bufflen);
+            bufflen += res;
+
+            if (res <= 0) {
+                if (res == 0) {
+                    break;
+                } else {
+                    perror("read");
+                    return 1;
+                }
+            }
+        }
+
+        printf("Received message: %s\n", buffer);
 
         if (send(req, message, strlen(message), 0) == -1) {
             perror("send");
@@ -58,8 +82,6 @@ int main() {
             perror("close");
             return 1;
         }
-
-
     }
     return 0;
 }
