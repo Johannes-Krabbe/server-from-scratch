@@ -6,6 +6,16 @@
 #include <malloc.h>
 #include "parser.h"
 
+static void print_headers(string* headers) {
+    printf("Headers:\n");
+    for (unsigned i = 0; i < HEADER_COUNT; i++) {
+        const char* str = headers[i].str;
+        if (str != NULL) {
+            printf("> %s: %.*s", header_arr[i], (int) headers[i].len, str);
+        }
+    }
+}
+
 int main() {
     printf("Hello, Jakob!\n");
 
@@ -16,12 +26,20 @@ int main() {
         return 1;
     }
 
+    int opt = 1;
+
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
+                   sizeof(opt))) {
+        perror("setsockopt");
+        return(1);
+    }
+
     struct in_addr in_addr;
     in_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(8081);
+    addr.sin_port = htons(8082);
     addr.sin_addr = in_addr;
 
     if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
@@ -46,7 +64,9 @@ int main() {
     size_t bufflen = 0;
     size_t maxlen = 10 * 1024 * 1024;
 
-    struct request* request = malloc(sizeof (struct request));
+    struct request* request = calloc(1, sizeof (struct request));
+    string* headers = calloc(38, sizeof (string));
+    request->headers = headers;
 
     char* message = "Hello\n";
 
@@ -73,9 +93,14 @@ int main() {
 
                     // analysis
                     if (beginning == buffer) {
-                        parse_request_line(request, beginning, len);
+                        if (parse_request_line(request, beginning, len) == -1) {
+                            // TODO error handling
+                        }
                     } else {
-                        // TODO parse header
+                        if (parse_header(request, beginning, len) == -1) {
+                            printf("error parsing header");
+                            // TODO error handling
+                        }
                     }
 
                     beginning = buffer + bufflen + i + 1;
@@ -107,6 +132,7 @@ int main() {
         //struct request* request = parse_request(buffer, bufflen);
         printf("METHOD: %i\n", request->method);
         printf("URI: %.*s\n", (int) request->uri.len, request->uri.str);
+        print_headers(request->headers);
 
         if (send(req, message, strlen(message), 0) == -1) {
             perror("send");
