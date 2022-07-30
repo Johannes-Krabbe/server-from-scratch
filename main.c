@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include <malloc.h>
+#include "parser.h"
 
 int main() {
     printf("Hello, Jakob!\n");
@@ -75,6 +75,9 @@ int main() {
         }
 
         printf("Received message: %s\n", buffer);
+
+        struct request* request = parse_request(buffer, bufflen);
+        printf("body: %s", request->body.str);
 
         if (send(req, message, strlen(message), 0) == -1) {
             perror("send");

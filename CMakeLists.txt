@@ -4,4 +4,4 @@ project(server-from-scratch C)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_FLAGS "-Wall -Werror -Wextra -Wno-unused-parameter")
 
-add_executable(server main.c)
+add_executable(server main.c parser.c)
