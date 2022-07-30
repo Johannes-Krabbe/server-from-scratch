@@ -29,7 +29,7 @@ int main() {
         return 1;
     }
 
-    printf("Successfully bound to 127.0.0.1:8080");
+    printf("Successfully bound to 127.0.0.1:8080\n");
 
     if (listen(sock, 10)) {
         perror("listen");
@@ -68,6 +68,9 @@ int main() {
                     perror("read");
                     return 1;
                 }
+            }
+            if (bufflen == maxlen) {
+                break;
             }
         }
 
