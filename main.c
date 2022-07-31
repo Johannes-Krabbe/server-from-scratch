@@ -4,14 +4,40 @@
 #include <unistd.h>
 #include <string.h>
 #include <malloc.h>
+#include <stdlib.h>
+#include <limits.h>
 #include "parser.h"
+
+const size_t MAX_REQUEST_SIZE = 10 * 1024 * 1024;
+
+static int64_t parse_string_to_long(string string) {
+    // TODO check overflow?
+
+    size_t len = string.len;
+    const char* str = string.str;
+
+    int n = 0;
+
+    while (len--) {
+        char c = *str++;
+        c -= '0';
+
+        if (c < 0 || c > 9) {
+            return -1;
+        }
+
+        n = n*10 + c;
+    }
+
+    return n;
+}
 
 static void print_headers(string* headers) {
     printf("Headers:\n");
     for (unsigned i = 0; i < HEADER_COUNT; i++) {
         const char* str = headers[i].str;
         if (str != NULL) {
-            printf("> %s: %.*s", header_arr[i], (int) headers[i].len, str);
+            printf("> %s: %.*s\n", header_arr[i], (int) headers[i].len, str);
         }
     }
 }
@@ -56,13 +82,12 @@ int main() {
 
     socklen_t addrlen = sizeof(addr);
 
-    char* buffer = malloc(10 * 1024 * 1024);
+    char* buffer = malloc(MAX_REQUEST_SIZE);
     if (buffer == NULL) {
         fprintf(stderr, "Unable to allocate buffer\n");
         return 1;
     }
     size_t bufflen = 0;
-    size_t maxlen = 10 * 1024 * 1024;
 
     struct request* request = calloc(1, sizeof (struct request));
     string* headers = calloc(38, sizeof (string));
@@ -80,14 +105,14 @@ int main() {
 
         ssize_t res = 1;
         while (1) {
-            res = read(req, buffer + bufflen, maxlen - bufflen);
+            res = read(req, buffer + bufflen, MAX_REQUEST_SIZE - bufflen);
 
             for (int i = 0; i < res; i++) {
                 if (buffer[bufflen + i] == '\n') {
                     size_t len = buffer + bufflen + i - beginning - 1;
-                    printf("LINE: %.*s\n", (int)len, beginning);
 
                     if (len == 0) {
+                        beginning = buffer + bufflen + i + 1;
                         goto loopend;
                     }
 
@@ -98,7 +123,7 @@ int main() {
                         }
                     } else {
                         if (parse_header(request, beginning, len) == -1) {
-                            printf("error parsing header");
+                            printf("error parsing header\n");
                             // TODO error handling
                         }
                     }
@@ -119,17 +144,24 @@ int main() {
 
             bufflen += res;
 
-            if (bufflen == maxlen) {
+            if (bufflen == MAX_REQUEST_SIZE) {
                 break;
             }
         }
 
+        string len_str;
         loopend:
-        printf("END OF HEADERS\n");
+        len_str = (request->headers)[CONTENT_LENGTH];
 
-        //printf("Received message: %s\n", buffer);
+        if (len_str.len != 0) {
+            int64_t len = parse_string_to_long(len_str);
+            if (len < 0 || beginning - buffer + (uint64_t)len > MAX_REQUEST_SIZE) {
+                printf("Invalid content-length header");
+            } else {
 
-        //struct request* request = parse_request(buffer, bufflen);
+            }
+        }
+
         printf("METHOD: %i\n", request->method);
         printf("URI: %.*s\n", (int) request->uri.len, request->uri.str);
         print_headers(request->headers);

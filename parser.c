@@ -82,6 +82,7 @@ int parse_header(struct request* request, const char* str, size_t len) {
     for (unsigned i = 0; i < len; i++) {
         if (str[i] == ':') {
             colon = i;
+            break;
         }
     }
 
@@ -98,7 +99,6 @@ int parse_header(struct request* request, const char* str, size_t len) {
         } else {
             name[i] = (char) (c | 0x20);
         }
-        name[i] = str[i];
     }
 
     enum request_header h = parse_header_name(name, colon);
